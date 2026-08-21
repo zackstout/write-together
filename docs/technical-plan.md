@@ -259,14 +259,82 @@ A checkbox on the editor (default: checked = public). Stored as `is_public`. Pub
 
 ---
 
+## Supabase Setup Instructions
+
+Follow these steps before running the app for the first time.
+
+### 1. Create a Supabase project
+
+1. Go to [supabase.com](https://supabase.com) and sign in or create an account.
+2. Click **New project**.
+3. Choose a name (e.g., `write-together`), set a strong database password, and pick the region closest to you.
+4. Wait for the project to finish provisioning (~1 minute).
+
+### 2. Run the database migration
+
+1. In the Supabase dashboard, go to **SQL Editor** (left sidebar).
+2. Click **New query**.
+3. Open `supabase/migrations/001_initial.sql` from this repo and paste the entire contents into the editor.
+4. Click **Run**. All tables, policies, and triggers will be created.
+
+### 3. Configure authentication
+
+1. In the Supabase dashboard, go to **Authentication → Email Templates**.
+2. Confirm that magic link emails are enabled (they are on by default).
+3. Go to **Authentication → URL Configuration**.
+4. Add your local dev URL to **Redirect URLs**: `http://localhost:3000/auth/callback`
+5. After deploying to Vercel, also add your production URL: `https://your-app.vercel.app/auth/callback`
+
+### 4. Copy your API keys
+
+1. In the Supabase dashboard, go to **Project Settings → API**.
+2. Copy **Project URL** → this is `NEXT_PUBLIC_SUPABASE_URL`.
+3. Copy **anon / public** key → this is `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+4. Copy **service_role** key (click "Reveal") → this is `SUPABASE_SERVICE_ROLE_KEY`.
+
+### 5. Set up local environment
+
+```bash
+cp .env.local.example .env.local
+```
+
+Paste the three keys from step 4 into `.env.local`.
+
+### 6. Seed prompts and create the first period
+
+```bash
+npx tsx scripts/seed-prompts.ts
+```
+
+### 7. Run the app locally
+
+```bash
+npm run dev
+```
+
+Visit `http://localhost:3000`.
+
+---
+
+### Ending a period (CLI)
+
+When you want to close the current prompt and start the next one:
+
+```bash
+npx tsx scripts/end-period.ts
+```
+
+This script uses `SUPABASE_SERVICE_ROLE_KEY` from your local `.env.local`.
+
+---
+
 ## Build Order
 
-1. Supabase project setup — tables, RLS, auth config.
-2. Next.js project scaffold — Tailwind, Supabase client helpers, types.
-3. Prompt seed script + end-period CLI script.
-4. Auth pages — login, magic link callback.
-5. Home page — current prompt + public response list.
-6. Draft editor page — create, autosave, submit, public toggle.
-7. Response detail page — full response + comments.
-8. Past periods page.
-9. Invite flow — API route + UI trigger.
+1. ~~Supabase project setup~~ — see setup instructions above.
+2. ~~Next.js project scaffold~~ — done.
+3. ~~Supabase client helpers, types~~ — done.
+4. ~~Database migration SQL~~ — done (`supabase/migrations/001_initial.sql`).
+5. ~~Prompt seed script + end-period CLI script~~ — done.
+6. ~~Auth pages — login, magic link callback~~ — done.
+7. ~~All pages and API routes~~ — done.
+8. Invite UI — a form somewhere in the app to trigger `POST /api/invite`.
