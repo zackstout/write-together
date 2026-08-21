@@ -22,11 +22,13 @@ export default function ResponseEditor({
 }: Props) {
   const [content, setContent] = useState(initialContent)
   const [isPublic, setIsPublic] = useState(initialIsPublic)
-  const [currentResponseId, setCurrentResponseId] = useState(responseId)
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Use a ref for responseId so save() always reads the latest value
+  // without needing to be in the useCallback dependency array
+  const responseIdRef = useRef<string | null>(responseId)
   const router = useRouter()
 
   const save = useCallback(
@@ -38,7 +40,7 @@ export default function ResponseEditor({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             periodId,
-            responseId: currentResponseId,
+            responseId: responseIdRef.current,
             content: text,
             isPublic: pub,
           }),
@@ -47,15 +49,15 @@ export default function ResponseEditor({
         if (!res.ok) throw new Error('Save failed')
 
         const data = await res.json()
-        if (!currentResponseId && data.id) {
-          setCurrentResponseId(data.id)
+        if (!responseIdRef.current && data.id) {
+          responseIdRef.current = data.id
         }
         setSaveStatus('saved')
       } catch {
         setSaveStatus('error')
       }
     },
-    [periodId, currentResponseId]
+    [periodId]
   )
 
   useEffect(() => {
@@ -70,8 +72,8 @@ export default function ResponseEditor({
   }, [content, isPublic, save, initialContent, initialIsPublic])
 
   async function handleSubmit() {
-    if (!currentResponseId) {
-      // Save first, then submit
+    if (!responseIdRef.current) {
+      // Save first so we have an ID to submit
       await save(content, isPublic)
     }
 
@@ -79,7 +81,7 @@ export default function ResponseEditor({
     setSubmitError(null)
 
     try {
-      const res = await fetch(`/api/responses/${currentResponseId}/submit`, {
+      const res = await fetch(`/api/responses/${responseIdRef.current}/submit`, {
         method: 'POST',
       })
 

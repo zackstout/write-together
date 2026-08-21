@@ -12,6 +12,13 @@ export default async function MyWritingPage() {
 
   if (!user) redirect('/login')
 
+  // Also fetch the active period ID so we can tell if a draft is still editable
+  const { data: activePeriod } = await supabase
+    .from('periods')
+    .select('id')
+    .is('ended_at', null)
+    .single()
+
   const { data: responses } = await supabase
     .from('responses')
     .select('*, period:periods(*, prompt:prompts(*))')
@@ -51,9 +58,15 @@ export default async function MyWritingPage() {
                 <p className="text-gray-600 text-sm line-clamp-3">{r.content || 'No content yet.'}</p>
                 <div className="mt-3">
                   {r.is_draft ? (
-                    <Link href="/respond" className="text-sm underline text-gray-900">
-                      Continue writing
-                    </Link>
+                    activePeriod?.id === r.period_id ? (
+                      <Link href="/respond" className="text-sm underline text-gray-900">
+                        Continue writing
+                      </Link>
+                    ) : (
+                      <span className="text-xs text-gray-400">
+                        Period ended — this draft was not submitted
+                      </span>
+                    )
                   ) : (
                     <Link href={`/responses/${r.id}`} className="text-sm underline text-gray-900">
                       View response

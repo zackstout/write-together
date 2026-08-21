@@ -14,6 +14,29 @@ export async function POST(request: Request) {
 
   const { periodId, responseId, content, isPublic } = await request.json()
 
+  // Look up the character limit from the active period's prompt
+  const lookupPeriodId = periodId ?? (
+    responseId
+      ? (await supabase.from('responses').select('period_id').eq('id', responseId).single()).data?.period_id
+      : null
+  )
+
+  if (lookupPeriodId) {
+    const { data: period } = await supabase
+      .from('periods')
+      .select('prompt:prompts(max_response_chars)')
+      .eq('id', lookupPeriodId)
+      .single()
+
+    const maxChars = (period?.prompt as { max_response_chars?: number } | null)?.max_response_chars
+    if (maxChars && typeof content === 'string' && content.length > maxChars) {
+      return NextResponse.json(
+        { error: `Response exceeds the ${maxChars} character limit` },
+        { status: 400 }
+      )
+    }
+  }
+
   if (responseId) {
     // Update existing draft
     const { data, error } = await supabase
