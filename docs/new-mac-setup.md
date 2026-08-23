@@ -26,9 +26,12 @@ sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/too
 ```
 
 ### Restore dotfiles
-- Copy or clone your dotfiles repo
-- Symlink `.zshrc`, `.gitconfig`, `.ssh/`, etc.
-- Or use a tool like `mackup` or `chezmoi` to manage this
+Copy these files directly from your old Mac:
+- `~/.zshrc` — includes NVM setup, `gpush()`, `cheer`, and `aoc` aliases
+- `~/.gitconfig` — includes `ac` alias and your name/email (zackstout@gmail.com)
+- `~/.ssh/config` — GitHub SSH config with keychain and ed25519 key
+
+**Note:** Remove `nvm use 21` from `.zshrc` — set a default via `nvm alias default 21` instead.
 
 ---
 
@@ -54,25 +57,35 @@ git config --global init.defaultBranch main
 ```
 
 ### SSH keys
-Generate a new key or restore from backup:
+**Option A (recommended): Copy existing key** — transfer `~/.ssh/id_ed25519` and `~/.ssh/id_ed25519.pub` from old Mac via AirDrop or encrypted drive. No GitHub changes needed.
+
+**Option B: Generate a fresh key:**
 ```bash
-ssh-keygen -t ed25519 -C "you@example.com"
+ssh-keygen -t ed25519 -C "zackstout@gmail.com"
 gh ssh-key add ~/.ssh/id_ed25519.pub --title "New Mac"
 ```
+
+Skip copying `known_hosts` — it regenerates automatically.
 
 ---
 
 ## Phase 4: Language Runtimes
 
-Use `mise` to manage versions cleanly:
+Use NVM to manage Node versions:
 ```bash
-mise install node@lts
-mise install python@latest
+brew install nvm
 ```
 
-Or install directly via brew if you prefer system-level:
+Then add to `.zshrc`:
 ```bash
-brew install node python
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
+```
+
+Then install Node and set the default:
+```bash
+nvm install 21
+nvm alias default 21
 ```
 
 ---
@@ -91,7 +104,29 @@ brew install --cask \
   rectangle
 ```
 
-Adjust this list to your actual app preferences.
+### What each app does
+
+| App | Purpose | Size |
+|-----|---------|------|
+| VS Code | Code editor, huge extension ecosystem | ~400 MB |
+| Cursor | AI-first code editor built on VS Code | ~400 MB |
+| Warp | Modern terminal with AI command suggestions | ~200 MB |
+| Arc | Browser with tab/space organization | ~300 MB |
+| 1Password | Password manager — passwords, SSH keys, env vars | ~100 MB |
+| Raycast | Replaces Spotlight — app launcher, clipboard history, window management | ~100 MB |
+| ImageOptim | Drag-and-drop image compression for web assets | ~20 MB |
+| Rectangle | Window snapping/tiling via keyboard shortcuts | ~5 MB |
+
+Total install footprint: ~1.5 GB.
+
+### Security notes
+
+- **1Password** — end-to-end encrypted, well-audited. No concern; improves your security posture.
+- **Raycast** — supports third-party extensions. Stick to official or widely-used extensions.
+- **Arc** — collects telemetry by default. Turn it off in Settings after install.
+- **Cursor** — sends code to AI providers (Anthropic, OpenAI) for completions. Fine for personal projects; check your NDA before using on client code.
+- **Warp** — sends terminal data for AI features. Same caveat as Cursor.
+- **VS Code, ImageOptim, Rectangle** — no notable concerns.
 
 ---
 
