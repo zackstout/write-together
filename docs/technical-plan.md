@@ -281,9 +281,12 @@ Follow these steps before running the app for the first time.
 
 1. In the Supabase dashboard, go to **Authentication → Email Templates**.
 2. Confirm that magic link emails are enabled (they are on by default).
-3. Go to **Authentication → URL Configuration**.
+3. Go to **Authentication → Configuration** (the dashboard may label this differently than "URL Configuration").
 4. Add your local dev URL to **Redirect URLs**: `http://localhost:3000/auth/callback`
 5. After deploying to Vercel, also add your production URL: `https://your-app.vercel.app/auth/callback`
+6. In the same area, find the Email provider or Sign In Methods settings. Confirm:
+   - Email provider is **enabled**
+   - "Confirm email" is **disabled** — magic link handles verification; a separate confirmation step breaks the flow
 
 ### 4. Copy your API keys
 
