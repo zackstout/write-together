@@ -1,12 +1,5 @@
 # Cinematic Skies — R&D Technical Record
 
-**Product:** Weather: Cinematic Skies
-**Codebase path:** `src/products/weather-cinematic`
-**Prepared:** 2026-08-26, by Engineering
-**Purpose:** Technical record of the algorithms, rendering architecture, and performance experimentation behind Cinematic Skies, prepared to support R&D tax credit substantiation.
-
-This document is not a legal or tax opinion. It documents the technical uncertainty the team faced and the process used to resolve it. Final qualification and credit computation — including the "substantially all" (80%) threshold under Treas. Reg. §1.41-4 — are determinations for your tax advisor under IRC §41 and applicable state statutes.
-
 ## 1. Summary
 
 Cinematic Skies renders a continuously varying sky, on a per-second basis, for any location and moment in time. The underlying feed data — cloud cover percentage, precipitation type and rate, wind speed and heading, sun/moon position, thunderstorm state — arrives as raw meteorological and astronomical measurements. None of it arrives as an instruction for how to draw anything.
@@ -15,17 +8,7 @@ The combination space this has to cover is not enumerable as static assets: 6 ti
 
 This record deliberately excludes layout, color choice, and visual polish, and isolates the parts of the build that involved genuine technical uncertainty at the outset — where the team did not know in advance whether a given computational approach would work, and had to build and measure candidate approaches to find out.
 
-## 2. How this maps to the four-part test
-
-**Permitted purpose — the business component test.** Every exhibit below targets the functionality, performance, reliability, or capability of the rendering engine — dropped frames on constrained hardware, correct derivation of real-world state from raw data, and asset-library reuse across conditions the engine hadn't been built to handle before. None concerns aesthetic design, style, taste, seasonal variation, or cosmetic enhancement, which this record deliberately excludes as non-qualifying.
-
-**Elimination of uncertainty.** At the start of each exhibit, the team did not have information readily available confirming the capability of achieving the result, the method needed to achieve it, or the appropriate technical design — whether a shared animation clock, canvas particle fields, timezone-database-free ephemeris math, or SVG-filter color grading would hit target frame rates or produce correct output on the target hardware and data. That uncertainty needn't be new to the industry; it's uncertainty as measured against what this team knew going in.
-
-**Process of experimentation.** Section 4 documents dated internal audits that evaluated and compared multiple candidate approaches — engineering analysis and, in places, direct benchmarking (e.g. the GPU-capability scoring test in `weather-cinematic-animation.md`) — before the team converged on an implementation. This evaluative work, not incidental cleanup, is the substantial majority of what each exhibit describes.
-
-**Technological in nature.** The work is grounded in computer science — real-time scheduling, canvas/GPU compositing, data-structure design — and applied physics/astronomy — celestial positioning, twilight ephemeris, lunar phase geometry. None of it rests on social science, economics, market research, or purely artistic judgment.
-
-## 3. Technical uncertainty and experimentation, by system
+## 2. Technical uncertainty and experimentation, by system
 
 ### Exhibit A — Single-clock animation scheduler
 `Content.vue` (`AnimationManager`)
@@ -33,6 +16,7 @@ This record deliberately excludes layout, color choice, and visual polish, and i
 - **Uncertainty:** Rain, snow, and stars each originally ran an independent `requestAnimationFrame` loop with its own timestep math. It was not known whether those loops could be merged into one shared clock without desynchronizing each layer's physics, or without reintroducing the frame conflicts and GPU thrashing the team had measured on low-power signage hardware.
 - **Method:** Built a registrar/dispatcher (`AnimationManager`) that drives a single `requestAnimationFrame` loop and calls each registered layer's `update(currentTime, deltaTime)`. Every layer's integration math was rewritten from wall-clock-relative to injected-`deltaTime`-relative, so correctness no longer depends on which layer's frame lands first. A rolling 60-frame FPS sampler feeds a dev-only meter used to measure the change.
 - **Resolution:** Every background layer now registers through Vue's `provide`/`inject` instead of owning its own loop; the FPS instrumentation remains in the shipped code as a standing measurement tool.
+- **Alternatives considered:** Earlier iterations of the particle layers were built on CSS keyframe animations, then on SVG-driven motion, then on a WebGL rewrite, before settling on the current `requestAnimationFrame`-plus-Canvas-2D approach that `AnimationManager` now schedules. Each prior approach was dropped for reasons specific to the signage hardware constraint: CSS animations gave the browser no hook for the shared-clock, deltaTime-driven synchronization the layers needed; SVG's per-element DOM overhead didn't hold up at the particle counts rain/snow/stars require; and the WebGL rewrite added a shader/context-management burden the low-power signage players couldn't absorb. Canvas 2D was the point all three converged toward, which is what Exhibit A and Exhibit D build on.
 
 ### Exhibit B — Ephemeris-derived time-of-day classifier
 `state.ts` (`transformTimeOfDay`)
@@ -84,14 +68,7 @@ This record deliberately excludes layout, color choice, and visual polish, and i
 - **Method:** An SVG `<filter>` built from `feComponentTransfer` gamma curves — independent amplitude/exponent/offset per RGB channel, table-driven by time-of-day — plus an `feFlood`/`feComposite`/`feBlend` soft-light tint stage re-grades the same base image on the browser's own filter pipeline. `mix-blend-mode: screen` is layered on top so one asset composites correctly against the six different procedurally-generated sky gradients from Exhibit B.
 - **Resolution:** One base cloud asset set serves every lighting condition; grading parameters are data, not pre-baked pixels.
 
-### Exhibit G — Fault-tolerant asset preload gate
-`preload.ts` (`preloadImage`)
-
-- **Uncertainty:** The render pipeline gates on `Promise.all()` over a variable-length set of image loads. On a signage network link, a single request can fail to ever fire either `onload` or `onerror` — which would hang that `Promise.all()`, and with it the whole intro sequence, indefinitely.
-- **Method:** `preloadImage()` is engineered to always settle and never reject: it races each image's load/error events against a fixed per-asset timeout and resolves with a status enum (`loaded | failed | timed-out`) rather than throwing.
-- **Resolution:** The render gate has a hard ceiling regardless of how many of the concurrent requests fail; missing assets degrade to "absent from the scene" instead of blocking playback.
-
-## 4. Contemporaneous evidence of alternatives evaluated
+## 3. Contemporaneous evidence of alternatives evaluated
 
 The repository retains dated internal audits from the performance work, written before the current architecture was settled on. They record approaches that were considered and, in several cases, explicitly rejected in favor of a simpler or cheaper alternative — which is itself part of the experimentation record.
 
@@ -103,7 +80,7 @@ The repository retains dated internal audits from the performance work, written 
 | `cloud-performance-2.md` | Evaluated, not adopted | Deeper technical assessment of `Clouds.vue` specifically, comparing CSS-filter compositing against a canvas/WebGL rewrite and mathematical (per-pixel) color adjustment; the SVG `feComponentTransfer` approach in Exhibit F is the point this analysis converged toward. |
 | `Content.vue` (`AnimationManager`) | **Adopted** | Shipped implementation of Exhibit A, including the live FPS sampler used to measure the effect of consolidation. |
 
-## 5. Exhibit coverage of the four-part test
+## 4. Exhibit coverage of the four-part test
 
 | Exhibit | Permitted purpose | Uncertainty | Experimentation | Technological |
 |---|---|---|---|---|
@@ -113,4 +90,3 @@ The repository retains dated internal audits from the performance work, written 
 | D · Particle systems | ✓ | ✓ | ✓ | ✓ |
 | E · Adaptive quality | ✓ | ✓ | ✓ | ✓ |
 | F · Color grading | ✓ | ✓ | ✓ | ✓ |
-| G · Preload gate | ✓ | ✓ | ✓ | ✓ |
